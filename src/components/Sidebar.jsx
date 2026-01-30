@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { PlusCircle, FileText, Download } from 'lucide-react';
+import { PlusCircle, FileText, Download, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const Sidebar = ({ onClose }) => {
@@ -39,8 +39,14 @@ const Sidebar = ({ onClose }) => {
     ];
 
     return (
-        <div className="w-64 h-screen bg-premium-gray border-r border-gray-800 flex flex-col fixed left-0 top-0 z-10 shadow-2xl">
-            <div className="p-8 flex items-center justify-center border-b border-gray-800 bg-gradient-to-b from-premium-gray to-[#151515]">
+        <div className="w-64 h-full min-h-screen bg-premium-gray border-r border-gray-800 flex flex-col shadow-2xl">
+            <div className="p-8 flex items-center justify-center border-b border-gray-800 bg-gradient-to-b from-premium-gray to-[#151515] relative">
+                <button
+                    onClick={onClose}
+                    className="lg:hidden absolute top-4 right-4 text-gray-400 hover:text-white"
+                >
+                    <X size={20} />
+                </button>
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
