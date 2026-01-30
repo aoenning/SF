@@ -6,6 +6,8 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+import { generateQuotePDF } from '../utils/pdfGenerator';
+
 const CreateQuote = () => {
     const [formData, setFormData] = useState({
         clientName: '',
@@ -74,104 +76,44 @@ const CreateQuote = () => {
         }
     };
 
-    const generatePDF = () => {
-        const doc = new jsPDF();
+    const getFormattedData = () => ({
+        ...formData,
+        total: calculateTotal(),
+        date: new Date().toLocaleDateString('pt-BR')
+    });
 
-        // Header
-        doc.setFillColor(26, 26, 26); // Premium Dark Gray
-        // Header background
-        doc.rect(0, 0, 210, 40, 'F');
-
-        // Red accent line at bottom of header
-        doc.setDrawColor(217, 4, 41);
-        doc.setLineWidth(1);
-        doc.line(0, 40, 210, 40);
-
-        // Logo
-        if (logoBase64) {
-            doc.addImage(logoBase64, 'PNG', 10, 5, 50, 30);
-        }
-
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(22);
-        // Adjust text position based on logo existence
-        const titleX = logoBase64 ? 70 : 105;
-        const align = logoBase64 ? 'left' : 'center';
-        doc.text('ORÇAMENTO', 190, 25, { align: 'right' });
-
-        // Content
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(12);
-
-        // Client Info Box
-        doc.setDrawColor(200, 200, 200);
-        doc.setFillColor(250, 250, 250);
-        doc.roundedRect(15, 50, 180, 25, 3, 3, 'FD');
-
-        doc.setFont('helvetica', 'bold');
-        doc.text('Dados do Cliente:', 20, 60);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`${formData.clientName}`, 20, 68);
-
-        doc.setFont('helvetica', 'bold');
-        doc.text('Contato:', 110, 60);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`${formData.clientPhone}`, 110, 68);
-
-        doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 150, 25, { align: 'right', baseline: 'top', className: 'text-white' });
-
-        // Table
-        autoTable(doc, {
-            startY: 85,
-            head: [['Descrição do Serviço', 'Qtd', 'Mão de Obra (R$)', 'Material (R$)', 'Total (R$)']],
-            body: [[
-                formData.serviceDescription,
-                formData.quantity,
-                `R$ ${parseFloat(formData.laborCost || 0).toFixed(2)}`,
-                `R$ ${parseFloat(formData.materialCost || 0).toFixed(2)}`,
-                `R$ ${calculateTotal()}`
-            ]],
-            theme: 'grid',
-            headStyles: { fillColor: [26, 26, 26], halign: 'center' },
-            bodyStyles: { halign: 'center' },
-            columnStyles: {
-                0: { halign: 'left', cellWidth: 80 }
-            }
-        });
-
-        // Footer
-        const finalY = doc.lastAutoTable.finalY || 150;
-
-        doc.setFillColor(240, 240, 240);
-        doc.rect(120, finalY + 10, 75, 20, 'F');
-
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(217, 4, 41);
-        doc.text(`VALOR TOTAL`, 125, finalY + 23);
-        doc.setTextColor(0, 0, 0);
-        doc.text(`R$ ${calculateTotal()}`, 190, finalY + 23, { align: 'right' });
-
-        // Signature lines
-        doc.setDrawColor(0, 0, 0);
-        doc.line(20, finalY + 60, 90, finalY + 60);
-        doc.line(120, finalY + 60, 190, finalY + 60);
-
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text('Assinatura do Responsável', 55, finalY + 65, { align: 'center' });
-        doc.text('Assinatura do Cliente', 155, finalY + 65, { align: 'center' });
-
-        // Branding Footer
-        doc.setFontSize(8);
-        doc.setTextColor(100, 100, 100);
-        doc.text('Serralheria Fazzer - Qualidade e Confiança', 105, 290, { align: 'center' });
-
+    const handleGeneratePDF = () => {
+        const doc = generateQuotePDF(getFormattedData(), logoBase64);
         doc.save(`Orcamento_${formData.clientName.replace(/\s+/g, '_')}.pdf`);
     };
 
-    const sendToWhatsApp = () => {
-        const text = `*Olá ${formData.clientName}!*\n\nAqui está o seu orçamento da *Serralheria Fazzer*:\n\n*Serviço:* ${formData.serviceDescription}\n*Total:* R$ ${calculateTotal()}\n\nFico no aguardo!`;
+    const handleSendWhatsApp = async () => {
+        const data = getFormattedData();
+
+        // 1. Try to share PDF file directly (Mobile)
+        try {
+            const doc = generateQuotePDF(data, logoBase64);
+            const pdfBlob = doc.output('blob');
+            const file = new File([pdfBlob], `Orcamento_${data.clientName.replace(/\s+/g, '_')}.pdf`, { type: 'application/pdf' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: 'Orçamento Serralheria Fazzer',
+                    text: `Olá ${data.clientName}, segue em anexo o seu orçamento.`,
+                });
+                return;
+            }
+        } catch (e) {
+            console.log("Sharing failed or not supported, falling back to text", e);
+        }
+
+        // 2. Fallback: Send Text Message + Download PDF
+        const text = `*Olá ${formData.clientName}!*\n\nAqui está o seu orçamento da *Serralheria Fazzer*:\n\n*Serviço:* ${formData.serviceDescription}\n*Total:* R$ ${calculateTotal()}\n\n_O arquivo PDF do orçamento foi baixado no seu dispositivo para que você possa enviá-lo._`;
+
+        // Download PDF for user to attach
+        handleGeneratePDF();
+
         const url = `https://wa.me/${formData.clientPhone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
         window.open(url, '_blank');
     };
@@ -275,9 +217,9 @@ const CreateQuote = () => {
                 </div>
 
                 {/* Total */}
-                <div className="bg-black/40 p-6 rounded-xl border border-gray-800 flex justify-between items-center">
-                    <span className="text-gray-400 font-medium">Valor Total Estimado</span>
-                    <span className="text-4xl font-bold text-premium-red">
+                <div className="bg-black/40 p-4 rounded-xl border border-gray-800 flex justify-between items-center">
+                    <span className="text-gray-400 font-medium text-sm">Valor Total Estimado</span>
+                    <span className="text-2xl font-bold text-premium-red">
                         R$ {calculateTotal()}
                     </span>
                 </div>
@@ -293,14 +235,14 @@ const CreateQuote = () => {
                     </button>
 
                     <button
-                        onClick={generatePDF}
+                        onClick={handleGeneratePDF}
                         className="flex-1 bg-gray-800 hover:bg-gray-700 text-white py-4 rounded-xl font-bold text-lg border border-gray-700 flex items-center justify-center gap-2 transition-all active:scale-95"
                     >
                         <Printer /> Gerar PDF
                     </button>
 
                     <button
-                        onClick={sendToWhatsApp}
+                        onClick={handleSendWhatsApp}
                         className="flex-1 bg-[#25D366] hover:bg-[#1ebc59] text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-green-900/20 flex items-center justify-center gap-2 transition-all active:scale-95"
                     >
                         <Smartphone /> Enviar WhatsApp
