@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { PlusCircle, FileText, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const Sidebar = () => {
+const Sidebar = ({ onClose }) => {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
 
     useEffect(() => {
@@ -46,8 +46,10 @@ const Sidebar = () => {
                     animate={{ opacity: 1 }}
                     className="flex flex-col items-center gap-2"
                 >
-                    <div className="w-24 h-16 flex items-center justify-center overflow-hidden">
-                        <img src="/logo.png" alt="Serralheria Fazzer" className="w-full h-full object-contain" />
+                    <div className="p-4 rounded-xl bg-white/5 backdrop-blur-sm border border-white/5 shadow-inner flex items-center justify-center">
+                        <div className="w-24 h-16 relative">
+                            <img src="/logo.png" alt="Serralheria Fazzer" className="w-full h-full object-contain filter drop-shadow-lg" />
+                        </div>
                     </div>
                 </motion.div>
             </div>
@@ -57,6 +59,7 @@ const Sidebar = () => {
                     <NavLink
                         key={link.to}
                         to={link.to}
+                        onClick={onClose}
                         className={({ isActive }) =>
                             `flex items-center gap-3 px-4 py-4 rounded-xl transition-all duration-300 group ${isActive
                                 ? 'bg-gradient-to-r from-premium-red to-red-700 text-white shadow-lg shadow-red-900/20'
@@ -83,6 +86,9 @@ const Sidebar = () => {
             <div className="p-4 border-t border-gray-800">
                 <p className="text-xs text-center text-gray-600">
                     © 2026 Serralheria Fazzer
+                </p>
+                <p className="text-[10px] text-center text-gray-700 mt-2 font-medium tracking-widest opacity-50 hover:opacity-100 transition-opacity cursor-default">
+                    ONG SYSTEM
                 </p>
             </div>
         </div>

@@ -20,7 +20,7 @@ const Layout = ({ children }) => {
         fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:block
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-                <Sidebar />
+                <Sidebar onClose={() => setIsMobileMenuOpen(false)} />
             </div>
 
             {/* Main Content */}

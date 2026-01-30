@@ -78,9 +78,14 @@ const CreateQuote = () => {
         const doc = new jsPDF();
 
         // Header
-        doc.setFillColor(217, 4, 41); // Premium Red
+        doc.setFillColor(26, 26, 26); // Premium Dark Gray
         // Header background
         doc.rect(0, 0, 210, 40, 'F');
+
+        // Red accent line at bottom of header
+        doc.setDrawColor(217, 4, 41);
+        doc.setLineWidth(1);
+        doc.line(0, 40, 210, 40);
 
         // Logo
         if (logoBase64) {
@@ -127,7 +132,7 @@ const CreateQuote = () => {
                 `R$ ${calculateTotal()}`
             ]],
             theme: 'grid',
-            headStyles: { fillColor: [217, 4, 41], halign: 'center' },
+            headStyles: { fillColor: [26, 26, 26], halign: 'center' },
             bodyStyles: { halign: 'center' },
             columnStyles: {
                 0: { halign: 'left', cellWidth: 80 }
@@ -156,6 +161,11 @@ const CreateQuote = () => {
         doc.setFont('helvetica', 'normal');
         doc.text('Assinatura do Responsável', 55, finalY + 65, { align: 'center' });
         doc.text('Assinatura do Cliente', 155, finalY + 65, { align: 'center' });
+
+        // Branding Footer
+        doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
+        doc.text('Serralheria Fazzer - Qualidade e Confiança', 105, 290, { align: 'center' });
 
         doc.save(`Orcamento_${formData.clientName.replace(/\s+/g, '_')}.pdf`);
     };

@@ -24,8 +24,10 @@ const SplashScreen = ({ onComplete }) => {
                     className="relative mb-6"
                 >
                     <div className="absolute inset-0 bg-premium-red blur-xl opacity-20 rounded-full w-48 h-32 ml-[-1rem] mt-[-1rem]"></div>
-                    <div className="flex items-center justify-center w-64 h-32 p-4">
-                        <img src="/logo.png" alt="Serralheria Fazzer" className="w-full h-full object-contain filter drop-shadow-[0_0_10px_rgba(217,4,41,0.5)]" />
+                    <div className="relative z-10 p-8 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)] flex items-center justify-center">
+                        <div className="w-64 h-32 relative">
+                            <img src="/logo.png" alt="Serralheria Fazzer" className="w-full h-full object-contain filter drop-shadow-[0_0_15px_rgba(0,0,0,0.5)]" />
+                        </div>
                     </div>
                 </motion.div>
 
