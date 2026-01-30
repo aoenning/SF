@@ -1,5 +1,9 @@
+import React, { useState, useEffect } from 'react';
+import { db } from '../firebase';
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { motion } from 'framer-motion';
+import { FileText, Calendar, DollarSign, Search, Printer, Smartphone, X } from 'lucide-react';
 import { generateQuotePDF } from '../utils/pdfGenerator';
-import { Printer, Smartphone, X } from 'lucide-react';
 
 const QuoteList = () => {
     const [quotes, setQuotes] = useState([]);
