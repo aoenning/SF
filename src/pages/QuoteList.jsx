@@ -191,19 +191,15 @@ const QuoteList = () => {
                                     onClick={(e) => handleSendWhatsApp(e, quote)}
                                     className="flex-1 bg-green-900/30 hover:bg-green-900/50 text-green-400 hover:text-green-300 py-2 rounded-lg text-xs font-medium border border-green-900/50 flex items-center justify-center gap-1 transition-colors"
                                 >
-                                    <button
-                                        onClick={(e) => handleSendWhatsApp(e, quote)}
-                                        className="flex-1 bg-green-900/30 hover:bg-green-900/50 text-green-400 hover:text-green-300 py-2 rounded-lg text-xs font-medium border border-green-900/50 flex items-center justify-center gap-1 transition-colors"
-                                    >
-                                        <Smartphone size={14} /> Whats
-                                    </button>
-                                    <button
-                                        onClick={(e) => handleDelete(e, quote.id)}
-                                        className="w-8 bg-red-900/30 hover:bg-red-900/50 text-red-400 hover:text-red-300 py-2 rounded-lg text-xs font-medium border border-red-900/50 flex items-center justify-center transition-colors"
-                                        title="Excluir"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
+                                    <Smartphone size={14} /> Whats
+                                </button>
+                                <button
+                                    onClick={(e) => handleDelete(e, quote.id)}
+                                    className="w-8 bg-red-900/30 hover:bg-red-900/50 text-red-400 hover:text-red-300 py-2 rounded-lg text-xs font-medium border border-red-900/50 flex items-center justify-center transition-colors"
+                                    title="Excluir"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
                             </div>
                         </motion.div>
                     ))}
