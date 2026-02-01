@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query, deleteDoc, doc } from 'firebase/firestore';
 import { motion } from 'framer-motion';
-import { FileText, Calendar, DollarSign, Search, Printer, Smartphone, X } from 'lucide-react';
+import { FileText, Calendar, DollarSign, Search, Printer, Smartphone, X, Trash2 } from 'lucide-react';
 import { generateQuotePDF } from '../utils/pdfGenerator';
 
 const QuoteList = () => {
@@ -99,6 +99,22 @@ const QuoteList = () => {
         window.open(url, '_blank');
     };
 
+    const handleDelete = async (e, quoteId) => {
+        e.stopPropagation();
+        if (window.confirm("Tem certeza que deseja excluir este orçamento?")) {
+            try {
+                await deleteDoc(doc(db, "quotes", quoteId));
+                setQuotes(prev => prev.filter(q => q.id !== quoteId));
+                if (selectedQuote && selectedQuote.id === quoteId) {
+                    setSelectedQuote(null);
+                }
+            } catch (error) {
+                console.error("Error deleting quote: ", error);
+                alert("Erro ao excluir orçamento.");
+            }
+        }
+    };
+
     return (
         <motion.div
             initial={{ opacity: 0 }}
@@ -175,8 +191,19 @@ const QuoteList = () => {
                                     onClick={(e) => handleSendWhatsApp(e, quote)}
                                     className="flex-1 bg-green-900/30 hover:bg-green-900/50 text-green-400 hover:text-green-300 py-2 rounded-lg text-xs font-medium border border-green-900/50 flex items-center justify-center gap-1 transition-colors"
                                 >
-                                    <Smartphone size={14} /> Whats
-                                </button>
+                                    <button
+                                        onClick={(e) => handleSendWhatsApp(e, quote)}
+                                        className="flex-1 bg-green-900/30 hover:bg-green-900/50 text-green-400 hover:text-green-300 py-2 rounded-lg text-xs font-medium border border-green-900/50 flex items-center justify-center gap-1 transition-colors"
+                                    >
+                                        <Smartphone size={14} /> Whats
+                                    </button>
+                                    <button
+                                        onClick={(e) => handleDelete(e, quote.id)}
+                                        className="w-8 bg-red-900/30 hover:bg-red-900/50 text-red-400 hover:text-red-300 py-2 rounded-lg text-xs font-medium border border-red-900/50 flex items-center justify-center transition-colors"
+                                        title="Excluir"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
                             </div>
                         </motion.div>
                     ))}
@@ -218,22 +245,34 @@ const QuoteList = () => {
                             </div>
 
                             <div>
-                                <label className="text-xs text-gray-500 uppercase tracking-wider">Descrição</label>
-                                <p className="text-gray-300 mt-1 p-3 bg-black/20 rounded-lg">{selectedQuote.serviceDescription}</p>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-4 border-t border-gray-800 pt-4">
-                                <div>
-                                    <label className="text-xs text-gray-500 uppercase tracking-wider">Mão de Obra</label>
-                                    <p className="text-white">R$ {parseFloat(selectedQuote.laborCost).toFixed(2)}</p>
-                                </div>
-                                <div>
-                                    <label className="text-xs text-gray-500 uppercase tracking-wider">Materiais</label>
-                                    <p className="text-white">R$ {parseFloat(selectedQuote.materialCost).toFixed(2)}</p>
-                                </div>
-                                <div>
-                                    <label className="text-xs text-gray-500 uppercase tracking-wider">Qtd</label>
-                                    <p className="text-white">{selectedQuote.quantity}</p>
+                                <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Itens do Orçamento</label>
+                                <div className="space-y-3">
+                                    {selectedQuote.items && selectedQuote.items.length > 0 ? (
+                                        selectedQuote.items.map((item, idx) => (
+                                            <div key={idx} className="bg-black/20 p-3 rounded-lg border border-gray-800">
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <span className="text-gray-200 font-medium">{item.description}</span>
+                                                    <span className="text-gray-400 text-sm">x{item.quantity}</span>
+                                                </div>
+                                                <div className="flex gap-4 text-xs text-gray-500">
+                                                    <span>Mão de Obra: R$ {parseFloat(item.laborCost || 0).toFixed(2)}</span>
+                                                    <span>Material: R$ {parseFloat(item.materialCost || 0).toFixed(2)}</span>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        // Backward compatibility for old single-item quotes
+                                        <div className="bg-black/20 p-3 rounded-lg border border-gray-800">
+                                            <div className="flex justify-between items-start mb-1">
+                                                <span className="text-gray-200 font-medium">{selectedQuote.serviceDescription}</span>
+                                                <span className="text-gray-400 text-sm">x{selectedQuote.quantity}</span>
+                                            </div>
+                                            <div className="flex gap-4 text-xs text-gray-500">
+                                                <span>Mão de Obra: R$ {parseFloat(selectedQuote.laborCost || 0).toFixed(2)}</span>
+                                                <span>Material: R$ {parseFloat(selectedQuote.materialCost || 0).toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -255,6 +294,13 @@ const QuoteList = () => {
                                 className="flex-1 bg-[#25D366] hover:bg-[#1ebc59] text-white py-3 rounded-xl font-bold shadow-lg shadow-green-900/20 flex items-center justify-center gap-2 transition-all"
                             >
                                 <Smartphone size={18} /> WhatsApp
+                            </button>
+                            <button
+                                onClick={(e) => handleDelete(e, selectedQuote.id)}
+                                className="w-12 bg-red-900/30 hover:bg-red-900/50 text-red-400 hover:text-red-300 py-3 rounded-xl font-bold border border-red-900/50 flex items-center justify-center transition-colors"
+                                title="Excluir"
+                            >
+                                <Trash2 size={18} />
                             </button>
                         </div>
                     </motion.div>

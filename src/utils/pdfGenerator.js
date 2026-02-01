@@ -44,22 +44,35 @@ export const generateQuotePDF = (data, logoBase64) => {
 
     doc.text(`Data: ${data.date || new Date().toLocaleDateString('pt-BR')}`, 150, 25, { align: 'right', baseline: 'top', className: 'text-white' });
 
-    // Calculate Total (if passed as string/number, ensure formatted)
-    const totalValue = typeof data.total === 'string' ? data.total : data.total.toFixed(2);
-    const labor = parseFloat(data.laborCost || 0).toFixed(2);
-    const material = parseFloat(data.materialCost || 0).toFixed(2);
+    // Prepare table body
+    let tableBody = [];
+    if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+        tableBody = data.items.map(item => [
+            item.description,
+            item.quantity,
+            `R$ ${parseFloat(item.laborCost || 0).toFixed(2)}`,
+            `R$ ${parseFloat(item.materialCost || 0).toFixed(2)}`,
+            `R$ ${((parseFloat(item.laborCost || 0) + parseFloat(item.materialCost || 0)) * item.quantity).toFixed(2)}`
+        ]);
+    } else {
+        // Backward compatibility
+        const labor = parseFloat(data.laborCost || 0).toFixed(2);
+        const material = parseFloat(data.materialCost || 0).toFixed(2);
+        const total = typeof data.total === 'string' ? data.total : data.total?.toFixed(2);
+        tableBody = [[
+            data.serviceDescription,
+            data.quantity,
+            `R$ ${labor}`,
+            `R$ ${material}`,
+            `R$ ${total}`
+        ]];
+    }
 
     // Table
     autoTable(doc, {
         startY: 85,
         head: [['Descrição do Serviço', 'Qtd', 'Mão de Obra (R$)', 'Material (R$)', 'Total (R$)']],
-        body: [[
-            data.serviceDescription,
-            data.quantity,
-            `R$ ${labor}`,
-            `R$ ${material}`,
-            `R$ ${totalValue}`
-        ]],
+        body: tableBody,
         theme: 'grid',
         headStyles: { fillColor: [26, 26, 26], halign: 'center' },
         bodyStyles: { halign: 'center' },
