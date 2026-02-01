@@ -4,6 +4,8 @@ import { collection, getDocs, orderBy, query, deleteDoc, doc } from 'firebase/fi
 import { motion } from 'framer-motion';
 import { FileText, Calendar, DollarSign, Search, Printer, Smartphone, X, Trash2 } from 'lucide-react';
 import { generateQuotePDF } from '../utils/pdfGenerator';
+import CustomAlert from '../components/CustomAlert';
+import { formatCurrency } from '../utils/formatters';
 
 const QuoteList = () => {
     const [quotes, setQuotes] = useState([]);
@@ -11,6 +13,27 @@ const QuoteList = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedQuote, setSelectedQuote] = useState(null);
     const [logoBase64, setLogoBase64] = useState(null);
+    const [alertConfig, setAlertConfig] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info',
+        onConfirm: null
+    });
+
+    const showAlert = (title, message, type = 'info', onConfirm = null) => {
+        setAlertConfig({
+            isOpen: true,
+            title,
+            message,
+            type,
+            onConfirm
+        });
+    };
+
+    const closeAlert = () => {
+        setAlertConfig(prev => ({ ...prev, isOpen: false }));
+    };
 
     useEffect(() => {
         // Preload logo for PDF
@@ -50,20 +73,31 @@ const QuoteList = () => {
         quote.serviceDescription.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // Helper to safely format data for PDF/WhatsApp
     const getFormattedData = (quote) => ({
         ...quote,
+        // Ensure date is valid or formatted
         date: quote.createdAt?.seconds ? new Date(quote.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR'),
-        // Ensure numbers are preserved properly if needed, but quote usually has them
+        // Backward compatibility for root level fields if items exist or not
         laborCost: quote.laborCost || 0,
         materialCost: quote.materialCost || 0,
-        total: quote.total
+        total: quote.total,
+        // Ensure items is an array if it exists, otherwise empty
+        items: Array.isArray(quote.items) ? quote.items : []
     });
 
     const handleGeneratePDF = (e, quote) => {
         e.stopPropagation();
-        const data = getFormattedData(quote);
-        const doc = generateQuotePDF(data, logoBase64);
-        doc.save(`Orcamento_${data.clientName.replace(/\s+/g, '_')}.pdf`);
+        try {
+            const data = getFormattedData(quote);
+            // If old quote (no items), restructure it for consistency if needed, 
+            // but pdfGenerator handles backward compatibility.
+            const doc = generateQuotePDF(data, logoBase64);
+            doc.save(`Orcamento_${data.clientName.replace(/\s+/g, '_')}.pdf`);
+        } catch (error) {
+            console.error("Error generating PDF:", error);
+            showAlert("Erro", "Erro ao gerar PDF. Verifique os dados do orçamento.", "error");
+        }
     };
 
     const handleSendWhatsApp = async (e, quote) => {
@@ -88,31 +122,53 @@ const QuoteList = () => {
             console.log("Sharing failed or not supported, falling back to text", error);
         }
 
-        // 2. Fallback
-        const text = `*Olá ${data.clientName}!*\n\nAqui está o seu orçamento da *Serralheria Fazzer*:\n\n*Serviço:* ${data.serviceDescription}\n*Total:* R$ ${data.total}\n\n_O arquivo PDF do orçamento foi baixado no seu dispositivo para que você possa enviá-lo._`;
+        // 2. Fallback WhatsApp Link
+        let messageBody = '';
+
+        // Build message based on whether it has items or is old format
+        if (data.items && data.items.length > 0) {
+            const itemsSummary = data.items.map(item => `• ${item.description} (${item.quantity}x)`).join('\n');
+            messageBody = `*Serviços:*\n${itemsSummary}`;
+        } else {
+            // Backward compatibility
+            messageBody = `*Serviço:* ${data.serviceDescription || 'Serviço Personalizado'}`;
+        }
+
+        const text = `*Olá ${data.clientName}!*\n\nAqui está o seu orçamento da *Serralheria Fazzer*:\n\n${messageBody}\n\n*Total:* ${formatCurrency(data.total)}\n\n_O arquivo PDF do orçamento foi baixado no seu dispositivo para que você possa enviá-lo._`;
 
         // Download PDF for user to attach
-        const doc = generateQuotePDF(data, logoBase64);
-        doc.save(`Orcamento_${data.clientName.replace(/\s+/g, '_')}.pdf`);
+        try {
+            const doc = generateQuotePDF(data, logoBase64);
+            doc.save(`Orcamento_${data.clientName.replace(/\s+/g, '_')}.pdf`);
 
-        const url = `https://wa.me/${quote.clientPhone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
-        window.open(url, '_blank');
+            const url = `https://wa.me/${quote.clientPhone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
+            window.open(url, '_blank');
+        } catch (error) {
+            console.error("Error generating PDF for WhatsApp:", error);
+            showAlert("Erro", "Erro ao preparar arquivo para WhatsApp.", "error");
+        }
     };
 
-    const handleDelete = async (e, quoteId) => {
+    const handleDelete = (e, quoteId) => {
         e.stopPropagation();
-        if (window.confirm("Tem certeza que deseja excluir este orçamento?")) {
-            try {
-                await deleteDoc(doc(db, "quotes", quoteId));
-                setQuotes(prev => prev.filter(q => q.id !== quoteId));
-                if (selectedQuote && selectedQuote.id === quoteId) {
-                    setSelectedQuote(null);
+        showAlert(
+            "Excluir Orçamento",
+            "Tem certeza que deseja excluir este orçamento? Esta ação não pode ser desfeita.",
+            "warning",
+            async () => {
+                try {
+                    await deleteDoc(doc(db, "quotes", quoteId));
+                    setQuotes(prev => prev.filter(q => q.id !== quoteId));
+                    if (selectedQuote && selectedQuote.id === quoteId) {
+                        setSelectedQuote(null);
+                    }
+                    showAlert("Sucesso", "Orçamento excluído com sucesso.", "success");
+                } catch (error) {
+                    console.error("Error deleting quote: ", error);
+                    showAlert("Erro", "Erro ao excluir orçamento.", "error");
                 }
-            } catch (error) {
-                console.error("Error deleting quote: ", error);
-                alert("Erro ao excluir orçamento.");
             }
-        }
+        );
     };
 
     return (
@@ -174,8 +230,8 @@ const QuoteList = () => {
 
                             <div className="flex items-center justify-between pt-4 border-t border-gray-800 mb-4">
                                 <span className="text-gray-500 text-sm">Total</span>
-                                <span className="text-xl font-bold text-premium-red flex items-center">
-                                    <span className="text-xs mr-1">R$</span> {quote.total}
+                                <span className="text-xl font-bold text-premium-red">
+                                    {formatCurrency(quote.total)}
                                 </span>
                             </div>
 
@@ -251,8 +307,8 @@ const QuoteList = () => {
                                                     <span className="text-gray-400 text-sm">x{item.quantity}</span>
                                                 </div>
                                                 <div className="flex gap-4 text-xs text-gray-500">
-                                                    <span>Mão de Obra: R$ {parseFloat(item.laborCost || 0).toFixed(2)}</span>
-                                                    <span>Material: R$ {parseFloat(item.materialCost || 0).toFixed(2)}</span>
+                                                    <span>Mão de Obra: {formatCurrency(item.laborCost || 0)}</span>
+                                                    <span>Material: {formatCurrency(item.materialCost || 0)}</span>
                                                 </div>
                                             </div>
                                         ))
@@ -264,8 +320,8 @@ const QuoteList = () => {
                                                 <span className="text-gray-400 text-sm">x{selectedQuote.quantity}</span>
                                             </div>
                                             <div className="flex gap-4 text-xs text-gray-500">
-                                                <span>Mão de Obra: R$ {parseFloat(selectedQuote.laborCost || 0).toFixed(2)}</span>
-                                                <span>Material: R$ {parseFloat(selectedQuote.materialCost || 0).toFixed(2)}</span>
+                                                <span>Mão de Obra: {formatCurrency(selectedQuote.laborCost || 0)}</span>
+                                                <span>Material: {formatCurrency(selectedQuote.materialCost || 0)}</span>
                                             </div>
                                         </div>
                                     )}
@@ -274,7 +330,7 @@ const QuoteList = () => {
 
                             <div className="flex justify-between items-center bg-black/40 p-4 rounded-xl border border-gray-800 mt-4">
                                 <span className="text-gray-400 font-medium">Total</span>
-                                <span className="text-3xl font-bold text-premium-red">R$ {selectedQuote.total}</span>
+                                <span className="text-3xl font-bold text-premium-red">{formatCurrency(selectedQuote.total)}</span>
                             </div>
                         </div>
 
@@ -302,6 +358,15 @@ const QuoteList = () => {
                     </motion.div>
                 </div>
             )}
+
+            <CustomAlert
+                isOpen={alertConfig.isOpen}
+                onClose={closeAlert}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                type={alertConfig.type}
+                onConfirm={alertConfig.onConfirm}
+            />
         </motion.div>
     );
 };

@@ -7,6 +7,8 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 import { generateQuotePDF } from '../utils/pdfGenerator';
+import CustomAlert from '../components/CustomAlert';
+import { formatCurrency } from '../utils/formatters';
 
 const CreateQuote = () => {
     const [clientData, setClientData] = useState({
@@ -25,8 +27,28 @@ const CreateQuote = () => {
     });
 
     const [isSaving, setIsSaving] = useState(false);
-    const [successMessage, setSuccessMessage] = useState('');
     const [logoBase64, setLogoBase64] = useState(null);
+    const [alertConfig, setAlertConfig] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info',
+        onConfirm: null
+    });
+
+    const showAlert = (title, message, type = 'info', onConfirm = null) => {
+        setAlertConfig({
+            isOpen: true,
+            title,
+            message,
+            type,
+            onConfirm
+        });
+    };
+
+    const closeAlert = () => {
+        setAlertConfig(prev => ({ ...prev, isOpen: false }));
+    };
 
     useEffect(() => {
         // Preload logo for PDF
@@ -52,7 +74,7 @@ const CreateQuote = () => {
             const material = parseFloat(item.materialCost) || 0;
             const quantity = parseFloat(item.quantity) || 1;
             return acc + ((labor + material) * quantity);
-        }, 0).toFixed(2);
+        }, 0);
     };
 
     const handleClientChange = (e) => {
@@ -67,7 +89,7 @@ const CreateQuote = () => {
 
     const handleAddItem = () => {
         if (!newItem.description || !newItem.laborCost) {
-            alert('Descrição e Valor da Mão de Obra são obrigatórios para adicionar um item.');
+            showAlert('Campos Obrigatórios', 'Descrição e Valor da Mão de Obra são obrigatórios para adicionar um item.', 'warning');
             return;
         }
 
@@ -88,7 +110,7 @@ const CreateQuote = () => {
     const handleSave = async () => {
         // Validate
         if (!clientData.clientName || items.length === 0) {
-            alert('Por favor preencha o nome do cliente e adicione pelo menos um item.');
+            showAlert('Atenção', 'Por favor preencha o nome do cliente e adicione pelo menos um item.', 'warning');
             return;
         }
 
@@ -102,15 +124,14 @@ const CreateQuote = () => {
                 createdAt: serverTimestamp()
             });
 
-            setSuccessMessage('Orçamento Salvo com Sucesso!');
-            setTimeout(() => setSuccessMessage(''), 3000);
+            showAlert('Sucesso!', 'Orçamento Salvo com Sucesso!', 'success');
 
             // Optional: reset form after save
             setClientData({ clientName: '', clientPhone: '' });
             setItems([]);
         } catch (error) {
             console.error("Error adding document: ", error);
-            alert('Erro ao salvar no banco de dados. Verifique a configuração.');
+            showAlert('Erro', 'Erro ao salvar no banco de dados. Verifique a configuração.', 'error');
         } finally {
             setIsSaving(false);
         }
@@ -126,7 +147,7 @@ const CreateQuote = () => {
 
     const handleGeneratePDF = () => {
         if (!clientData.clientName || items.length === 0) {
-            alert('Preencha os dados e adicione itens antes de gerar o PDF.');
+            showAlert('Dados Incompletos', 'Preencha os dados e adicione itens antes de gerar o PDF.', 'warning');
             return;
         }
         const doc = generateQuotePDF(getFormattedData(), logoBase64);
@@ -135,7 +156,7 @@ const CreateQuote = () => {
 
     const handleSendWhatsApp = async () => {
         if (!clientData.clientName || items.length === 0) {
-            alert('Preencha os dados e adicione itens antes de enviar.');
+            showAlert('Dados Incompletos', 'Preencha os dados e adicione itens antes de enviar.', 'warning');
             return;
         }
         const data = getFormattedData();
@@ -161,7 +182,7 @@ const CreateQuote = () => {
         // 2. Fallback: Send Text Message + Download PDF
         let itemsSummary = items.map(item => `• ${item.description} (${item.quantity}x)`).join('\n');
 
-        const text = `*Olá ${clientData.clientName}!*\n\nAqui está o seu orçamento da *Serralheria Fazzer*:\n\n*Serviços:*\n${itemsSummary}\n\n*Total:* R$ ${calculateTotal()}\n\n_O arquivo PDF do orçamento foi baixado no seu dispositivo para que você possa enviá-lo._`;
+        const text = `*Olá ${clientData.clientName}!*\n\nAqui está o seu orçamento da *Serralheria Fazzer*:\n\n*Serviços:*\n${itemsSummary}\n\n*Total:* ${formatCurrency(calculateTotal())}\n\n_O arquivo PDF do orçamento foi baixado no seu dispositivo para que você possa enviá-lo._`;
 
         // Download PDF for user to attach
         handleGeneratePDF();
@@ -278,11 +299,11 @@ const CreateQuote = () => {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="border-b border-gray-700 text-gray-400 text-sm">
-                                    <th className="py-2">Descrição</th>
-                                    <th className="py-2 text-center">Qtd</th>
-                                    <th className="py-2 text-center">Mão de Obra</th>
-                                    <th className="py-2 text-center">Material</th>
-                                    <th className="py-2 text-center">Total Item</th>
+                                    <th className="py-2 min-w-[150px]">Descrição</th>
+                                    <th className="py-2 text-center whitespace-nowrap px-2">Qtd</th>
+                                    <th className="py-2 text-center whitespace-nowrap px-2">Mão de Obra</th>
+                                    <th className="py-2 text-center whitespace-nowrap px-2">Material</th>
+                                    <th className="py-2 text-center whitespace-nowrap px-2">Total Item</th>
                                     <th className="py-2 text-right">Ação</th>
                                 </tr>
                             </thead>
@@ -291,10 +312,10 @@ const CreateQuote = () => {
                                     <tr key={index} className="text-gray-300">
                                         <td className="py-3">{item.description}</td>
                                         <td className="py-3 text-center">{item.quantity}</td>
-                                        <td className="py-3 text-center">R$ {parseFloat(item.laborCost || 0).toFixed(2)}</td>
-                                        <td className="py-3 text-center">R$ {parseFloat(item.materialCost || 0).toFixed(2)}</td>
-                                        <td className="py-3 text-center font-bold text-white">
-                                            R$ {((parseFloat(item.laborCost || 0) + parseFloat(item.materialCost || 0)) * item.quantity).toFixed(2)}
+                                        <td className="py-3 text-center whitespace-nowrap">{formatCurrency(item.laborCost || 0)}</td>
+                                        <td className="py-3 text-center whitespace-nowrap">{formatCurrency(item.materialCost || 0)}</td>
+                                        <td className="py-3 text-center font-bold text-white whitespace-nowrap">
+                                            {formatCurrency(((parseFloat(item.laborCost || 0) + parseFloat(item.materialCost || 0)) * item.quantity))}
                                         </td>
                                         <td className="py-3 text-right">
                                             <button
@@ -315,7 +336,7 @@ const CreateQuote = () => {
                 <div className="bg-black/40 p-4 rounded-xl border border-gray-800 flex justify-between items-center">
                     <span className="text-gray-400 font-medium text-sm">Valor Total Estimado</span>
                     <span className="text-2xl font-bold text-premium-red">
-                        R$ {calculateTotal()}
+                        {formatCurrency(calculateTotal())}
                     </span>
                 </div>
 
@@ -346,18 +367,19 @@ const CreateQuote = () => {
                     </div>
                 </div>
 
-                {successMessage && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="p-4 bg-green-900/30 border border-green-800 text-green-300 rounded-lg text-center font-medium"
-                    >
-                        {successMessage}
-                    </motion.div>
-                )}
-
             </div>
-        </motion.div>
+
+            <CustomAlert
+                isOpen={alertConfig.isOpen}
+                onClose={closeAlert}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                type={alertConfig.type}
+                onConfirm={alertConfig.onConfirm}
+            />
+
+
+        </motion.div >
     );
 };
 
