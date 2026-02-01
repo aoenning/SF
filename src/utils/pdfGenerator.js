@@ -92,6 +92,11 @@ export const generateQuotePDF = (data, logoBase64) => {
     doc.setTextColor(217, 4, 41);
     doc.text(`VALOR TOTAL`, 125, finalY + 23);
     doc.setTextColor(0, 0, 0);
+
+    // Format total value properly
+    const totalValue = typeof data.total === 'number'
+        ? data.total.toFixed(2)
+        : parseFloat(data.total || 0).toFixed(2);
     doc.text(`R$ ${totalValue}`, 190, finalY + 23, { align: 'right' });
 
     // Signature lines
