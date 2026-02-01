@@ -320,28 +320,30 @@ const CreateQuote = () => {
                 </div>
 
                 {/* Actions */}
-                <div className="flex flex-wrap gap-4 pt-4">
+                <div className="flex flex-col md:flex-row gap-3 pt-4">
                     <button
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="flex-1 bg-gradient-to-r from-premium-red to-red-800 hover:from-red-600 hover:to-red-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-red-900/40 flex items-center justify-center gap-2 transition-all active:scale-95"
+                        className="w-full md:flex-1 bg-gradient-to-r from-premium-red to-red-800 hover:from-red-600 hover:to-red-900 text-white py-3 md:py-4 rounded-xl font-bold text-base md:text-lg shadow-lg shadow-red-900/40 flex items-center justify-center gap-2 transition-all active:scale-95"
                     >
-                        {isSaving ? <RefreshCw className="animate-spin" /> : <Save />} Salvar Orçamento
+                        {isSaving ? <RefreshCw className="animate-spin" size={20} /> : <Save size={20} />} Salvar Orçamento
                     </button>
 
-                    <button
-                        onClick={handleGeneratePDF}
-                        className="flex-1 bg-gray-800 hover:bg-gray-700 text-white py-4 rounded-xl font-bold text-lg border border-gray-700 flex items-center justify-center gap-2 transition-all active:scale-95"
-                    >
-                        <Printer /> Gerar PDF
-                    </button>
+                    <div className="flex gap-3 w-full md:flex-1">
+                        <button
+                            onClick={handleGeneratePDF}
+                            className="flex-1 bg-gray-800 hover:bg-gray-700 text-white py-3 md:py-4 rounded-xl font-bold text-base md:text-lg border border-gray-700 flex items-center justify-center gap-2 transition-all active:scale-95"
+                        >
+                            <Printer size={20} /> PDF
+                        </button>
 
-                    <button
-                        onClick={handleSendWhatsApp}
-                        className="flex-1 bg-[#25D366] hover:bg-[#1ebc59] text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-green-900/20 flex items-center justify-center gap-2 transition-all active:scale-95"
-                    >
-                        <Smartphone /> Enviar WhatsApp
-                    </button>
+                        <button
+                            onClick={handleSendWhatsApp}
+                            className="flex-1 bg-[#25D366] hover:bg-[#1ebc59] text-white py-3 md:py-4 rounded-xl font-bold text-base md:text-lg shadow-lg shadow-green-900/20 flex items-center justify-center gap-2 transition-all active:scale-95"
+                        >
+                            <Smartphone size={20} /> WhatsApp
+                        </button>
+                    </div>
                 </div>
 
                 {successMessage && (
